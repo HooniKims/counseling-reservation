@@ -155,6 +155,9 @@ counseling-system/
 ### Phase 16: Excel 다운로드 파일명 날짜 오류 수정 ✅
     - [x] **엑셀 파일명 날짜 기준 오류 수정**: 교사 페이지에서 엑셀 다운로드 시, 파일명의 날짜가 UTC 기준으로 생성되어 하루 전 날짜로 표시되는 오류를 수정했습니다. `new Date().toISOString()` 대신 `lib/utils.ts`의 `formatDate(new Date())` 함수를 사용하여, 사용자의 현지 시간(KST)을 기준으로 정확한 날짜가 파일명에 포함되도록 변경했습니다.
 
+### Phase 17: Vercel 배포 오류 수정 ✅
+    - [x] **빌드 오류 수정**: Vercel 배포 중 `Button` 컴포넌트의 `variant` 속성에 정의되지 않은 `outline` 값을 사용하여 발생한 타입스크립트 오류를 해결했습니다. `components/Button.tsx` 파일에 `outline` variant의 타입과 스타일을 추가하여 빌드가 정상적으로 완료되도록 수정했습니다.
+
 ## 최근 작업 로그
 
 > 매 작업 단위가 끝날 때마다 이 섹션을 업데이트합니다.
