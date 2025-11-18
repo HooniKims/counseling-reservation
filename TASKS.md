@@ -158,6 +158,9 @@ counseling-system/
 ### Phase 17: Vercel 배포 오류 수정 ✅
     - [x] **빌드 오류 수정**: Vercel 배포 중 `Button` 컴포넌트의 `variant` 속성에 정의되지 않은 `outline` 값을 사용하여 발생한 타입스크립트 오류를 해결했습니다. `components/Button.tsx` 파일에 `outline` variant의 타입과 스타일을 추가하여 빌드가 정상적으로 완료되도록 수정했습니다.
 
+### Phase 18: 다른 브라우저/IP에서 예약 조회 문제 해결 ✅
+- [x] **예약 조회 문제 해결**: 다른 브라우저나 IP 주소에서 예약했을 때, 해당 예약이 조회되지 않던 문제를 해결했습니다. `check-reservation` 페이지에서 `studentNumber`와 `studentName`을 기반으로 예약 정보를 조회할 때, Firestore 쿼리 조건이 정확하게 적용되지 않아 발생한 문제였습니다. 쿼리 조건을 수정하여 `studentNumber`와 `studentName`이 정확히 일치하는 예약만 가져오도록 변경했습니다.
+
 ## 최근 작업 로그
 
 > 매 작업 단위가 끝날 때마다 이 섹션을 업데이트합니다.
