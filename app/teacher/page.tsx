@@ -20,17 +20,9 @@ export default function TeacherPage() {
   const [passwordInput, setPasswordInput] = useState('');
   const [authChecking, setAuthChecking] = useState(true);
 
-  const [teacherId] = useState(() => {
-    if (typeof window !== 'undefined') {
-      let id = localStorage.getItem('teacherId');
-      if (!id) {
-        id = generateId();
-        localStorage.setItem('teacherId', id);
-      }
-      return id;
-    }
-    return '';
-  });
+  const [teacherId] = useState(
+    process.env.NEXT_PUBLIC_TEACHER_ID || 'default_teacher_id'
+  );
 
   const [periods, setPeriods] = useState<Period[]>(DEFAULT_PERIODS);
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
@@ -82,14 +74,18 @@ export default function TeacherPage() {
   useEffect(() => {
     if (!teacherId) return;
 
+    const today = formatDate(new Date()); // YYYY-MM-DD 형식
+
     const slotsQuery = query(
       collection(db, 'availableSlots'),
-      where('teacherId', '==', teacherId)
+      where('teacherId', '==', teacherId),
+      where('date', '>=', today)
     );
 
     const reservationsQuery = query(
       collection(db, 'reservations'),
-      where('teacherId', '==', teacherId)
+      where('teacherId', '==', teacherId),
+      where('date', '>=', today)
     );
 
     const unsubscribeSlots = onSnapshot(slotsQuery, (snapshot) => {
@@ -313,7 +309,7 @@ export default function TeacherPage() {
               type="password"
               value={passwordInput}
               onChange={(e) => setPasswordInput(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 [transform:translateZ(0)]"
               placeholder="비밀번호"
             />
             <Button type="submit" className="w-full">
