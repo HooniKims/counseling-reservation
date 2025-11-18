@@ -76,22 +76,25 @@ export default function TeacherPage() {
 
     const today = formatDate(new Date()); // YYYY-MM-DD 형식
 
+    // 인덱스 없이 작동하도록 단일 where 조건만 사용하고 클라이언트에서 필터링
     const slotsQuery = query(
       collection(db, 'availableSlots'),
-      where('teacherId', '==', teacherId),
-      where('date', '>=', today)
+      where('teacherId', '==', teacherId)
     );
 
     const reservationsQuery = query(
       collection(db, 'reservations'),
-      where('teacherId', '==', teacherId),
-      where('date', '>=', today)
+      where('teacherId', '==', teacherId)
     );
 
     const unsubscribeSlots = onSnapshot(slotsQuery, (snapshot) => {
       const slots: AvailableSlot[] = [];
       snapshot.forEach((doc) => {
-        slots.push({ id: doc.id, ...doc.data() } as AvailableSlot);
+        const data = doc.data() as AvailableSlot;
+        // 클라이언트 측에서 날짜 필터링
+        if (data.date >= today) {
+          slots.push({ id: doc.id, ...data });
+        }
       });
       setAvailableSlots(slots);
       setLoading(false);
@@ -100,7 +103,11 @@ export default function TeacherPage() {
     const unsubscribeReservations = onSnapshot(reservationsQuery, (snapshot) => {
       const reservs: Reservation[] = [];
       snapshot.forEach((doc) => {
-        reservs.push({ id: doc.id, ...doc.data() } as Reservation);
+        const data = doc.data() as Reservation;
+        // 클라이언트 측에서 날짜 필터링
+        if (data.date >= today) {
+          reservs.push({ id: doc.id, ...data });
+        }
       });
       setReservations(reservs.sort((a, b) => a.date.localeCompare(b.date) || a.period - b.period));
     });
