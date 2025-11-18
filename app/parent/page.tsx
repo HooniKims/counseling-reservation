@@ -207,7 +207,7 @@ function BookingTab() {
               value={studentNumber}
               onChange={e => setStudentNumber(e.target.value)}
               placeholder="학번을 입력하세요"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent [transform:translateZ(0)]"
               required
             />
           </div>
@@ -222,7 +222,7 @@ function BookingTab() {
               value={studentName}
               onChange={e => setStudentName(e.target.value)}
               placeholder="이름을 입력하세요"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent [transform:translateZ(0)]"
               required
             />
           </div>
@@ -338,7 +338,7 @@ function BookingTab() {
             value={content}
             onChange={e => setContent(e.target.value)}
             rows={4}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none [transform:translateZ(0)]"
             placeholder="상담받고 싶은 내용을 간단히 적어 주세요."
           />
         </div>
@@ -438,7 +438,7 @@ function CheckTab() {
               value={studentNumber}
               onChange={e => setStudentNumber(e.target.value)}
               placeholder="학번을 입력하세요"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent [transform:translateZ(0)]"
             />
           </div>
 
@@ -452,7 +452,7 @@ function CheckTab() {
               value={studentName}
               onChange={e => setStudentName(e.target.value)}
               placeholder="이름을 입력하세요"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent [transform:translateZ(0)]"
             />
           </div>
         </div>
