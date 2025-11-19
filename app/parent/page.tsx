@@ -18,6 +18,7 @@ import { Calendar, CalendarPlus, CheckCircle2, Clock, MessageSquare, Search, Use
 import Layout from '@/components/Layout';
 import Button from '@/components/Button';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import ConfirmModal from '@/components/ConfirmModal';
 import { AvailableSlot, COUNSELING_TOPICS, CounselingTopic, Period, Reservation, DEFAULT_PERIODS } from '@/types';
 import { formatDateKorean } from '@/lib/utils';
 import { db } from '@/lib/firebase';
@@ -35,11 +36,10 @@ export default function ParentPage() {
           <button
             type="button"
             onClick={() => setActiveTab('book')}
-            className={`flex-1 py-3 px-6 rounded-md font-medium transition-all ${
-              activeTab === 'book'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
+            className={`flex-1 py-3 px-6 rounded-md font-medium transition-all ${activeTab === 'book'
+              ? 'bg-white text-blue-600 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+              }`}
           >
             <CalendarPlus className="w-5 h-5 inline-block mr-2" />
             예약하기
@@ -47,11 +47,10 @@ export default function ParentPage() {
           <button
             type="button"
             onClick={() => setActiveTab('check')}
-            className={`flex-1 py-3 px-6 rounded-md font-medium transition-all ${
-              activeTab === 'check'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
+            className={`flex-1 py-3 px-6 rounded-md font-medium transition-all ${activeTab === 'check'
+              ? 'bg-white text-blue-600 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+              }`}
           >
             <Search className="w-5 h-5 inline-block mr-2" />
             예약 조회 / 취소
@@ -74,9 +73,18 @@ function BookingTab() {
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
   const [topic, setTopic] = useState<CounselingTopic>(COUNSELING_TOPICS[0]);
   const [content, setContent] = useState('');
+  const [consultationType, setConsultationType] = useState<'face' | 'phone' | 'etc'>('face');
+  const [consultationTypeEtc, setConsultationTypeEtc] = useState('');
   const [loading, setLoading] = useState(false);
   const [periods] = useState<Period[]>(DEFAULT_PERIODS);
   const [teacherId, setTeacherId] = useState<string>('');
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { },
+    cancelText: null as string | null,
+  });
 
   // 교사 ID 조회를 위해 예약 가능한 슬롯을 하나만 가져옵니다.
   useEffect(() => {
@@ -84,12 +92,12 @@ function BookingTab() {
       try {
         // status가 'available'인 슬롯을 1개만 쿼리하여 teacherId를 효율적으로 찾습니다.
         const q = query(
-          collection(db, 'availableSlots'), 
-          where('status', '==', 'available'), 
+          collection(db, 'availableSlots'),
+          where('status', '==', 'available'),
           limit(1)
         );
         const snapshot = await getDocs(q);
-        
+
         if (!snapshot.empty) {
           const slot = snapshot.docs[0].data();
           setTeacherId(slot.teacherId);
@@ -145,6 +153,11 @@ function BookingTab() {
     e.preventDefault();
     if (!selectedSlot) return;
 
+    if (consultationType === 'etc' && !consultationTypeEtc.trim()) {
+      alert('기타 상담 방식을 입력해 주세요.');
+      return;
+    }
+
     setLoading(true);
     try {
       const slotRef = doc(db, 'availableSlots', selectedSlot.id);
@@ -171,23 +184,39 @@ function BookingTab() {
           endTime: selectedSlot.endTime,
           topic,
           content: content.trim(),
+          consultationType,
+          consultationTypeEtc: consultationType === 'etc' ? consultationTypeEtc.trim() : '',
           createdAt: Date.now(),
         });
       });
 
-      alert('상담 예약이 완료되었습니다.');
-
-      // Reset state
-      setStep(1);
-      setStudentNumber('');
-      setStudentName('');
-      setSelectedSlot(null);
-      setTopic(COUNSELING_TOPICS[0]);
-      setContent('');
+      setConfirmModal({
+        isOpen: true,
+        title: '예약 완료',
+        message: '상담 예약이 완료되었습니다.\n예약 확인은 예약 조회/취소 탭에서 확인하실 수 있습니다.',
+        cancelText: null,
+        onConfirm: () => {
+          setStep(1);
+          setStudentNumber('');
+          setStudentName('');
+          setSelectedSlot(null);
+          setTopic(COUNSELING_TOPICS[0]);
+          setContent('');
+          setConsultationType('face');
+          setConsultationTypeEtc('');
+        },
+      });
     } catch (error) {
       console.error('예약 오류:', error);
-      alert('예약에 실패했습니다. 다른 시간을 선택하거나 선생님께 문의해주세요.');
-      setStep(2); // On error, return to the time selection step
+      setConfirmModal({
+        isOpen: true,
+        title: '예약 실패',
+        message: '예약에 실패했습니다. 다른 시간을 선택하거나 선생님께 문의해주세요.',
+        cancelText: null,
+        onConfirm: () => {
+          setStep(2); // On error, return to the time selection step
+        },
+      });
     } finally {
       setLoading(false);
     }
@@ -318,16 +347,68 @@ function BookingTab() {
                 key={t}
                 type="button"
                 onClick={() => setTopic(t)}
-                className={`px-3 py-2 rounded-lg text-sm border ${
-                  topic === t
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-                }`}
+                className={`px-3 py-2 rounded-lg text-sm border ${topic === t
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                  }`}
               >
                 {t}
               </button>
             ))}
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            상담 방식
+          </label>
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="radio"
+                name="consultationType"
+                value="face"
+                checked={consultationType === 'face'}
+                onChange={(e) => setConsultationType(e.target.value as 'face')}
+                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+              />
+              <span className="text-gray-700">대면 상담</span>
+            </label>
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="radio"
+                name="consultationType"
+                value="phone"
+                checked={consultationType === 'phone'}
+                onChange={(e) => setConsultationType(e.target.value as 'phone')}
+                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+              />
+              <span className="text-gray-700">전화 상담</span>
+            </label>
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="radio"
+                name="consultationType"
+                value="etc"
+                checked={consultationType === 'etc'}
+                onChange={(e) => setConsultationType(e.target.value as 'etc')}
+                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+              />
+              <span className="text-gray-700">기타</span>
+            </label>
+          </div>
+          {consultationType === 'etc' && (
+            <div className="mt-2">
+              <input
+                type="text"
+                value={consultationTypeEtc}
+                onChange={(e) => setConsultationTypeEtc(e.target.value)}
+                placeholder="기타 상담 방식을 입력해 주세요"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
+          )}
         </div>
 
         <div>
@@ -347,6 +428,15 @@ function BookingTab() {
           {loading ? '예약 처리 중...' : '예약 완료하기'}
         </Button>
       </form>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        cancelText={confirmModal.cancelText}
+      />
     </div>
   );
 }
@@ -357,6 +447,13 @@ function CheckTab() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { },
+    cancelText: null as string | null,
+  });
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -393,32 +490,33 @@ function CheckTab() {
     }
   };
 
-  const handleCancel = async (reservation: Reservation) => {
-    if (
-      !confirm(
-        `${reservation.studentName}(${reservation.studentNumber})의 예약을 취소하시겠습니까?`,
-      )
-    ) {
-      return;
-    }
+  const handleCancel = (reservation: Reservation) => {
+    setConfirmModal({
+      isOpen: true,
+      title: '예약 취소',
+      message: `${reservation.studentName}(${reservation.studentNumber})의 예약을 취소하시겠습니까?`,
+      cancelText: '취소',
+      onConfirm: async () => {
+        try {
+          const reservationRef = doc(db, 'reservations', reservation.id);
+          const slotRef = doc(db, 'availableSlots', reservation.slotId);
 
-    try {
-      const reservationRef = doc(db, 'reservations', reservation.id);
-      const slotRef = doc(db, 'availableSlots', reservation.slotId);
+          await runTransaction(db, async transaction => {
+            transaction.delete(reservationRef);
+            transaction.update(slotRef, { status: 'available' });
+          });
 
-      await runTransaction(db, async transaction => {
-        // Note: It's good practice to ensure the reservation exists before trying to delete,
-        // but for this flow, we assume it does as the user is clicking a button on an existing reservation.
-        transaction.delete(reservationRef);
-        transaction.update(slotRef, { status: 'available' });
-      });
-
-      setReservations(prev => prev.filter(r => r.id !== reservation.id));
-      alert('예약이 취소되었습니다.');
-    } catch (error) {
-      console.error('예약 취소 오류:', error);
-      alert('예약 취소에 실패했습니다. 잠시 후 다시 시도해 주세요.');
-    }
+          setReservations(prev => prev.filter(r => r.id !== reservation.id));
+          // 예약 취소 성공 시에도 모달로 알림을 띄우는 것이 좋겠지만, 
+          // 기존 로직 유지를 위해 alert 사용 또는 필요 시 변경 가능.
+          // 여기서는 일단 alert 유지 (사용자 요청은 예약 완료 팝업이었음)
+          alert('예약이 취소되었습니다.');
+        } catch (error) {
+          console.error('예약 취소 오류:', error);
+          alert('예약 취소에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+        }
+      },
+    });
   };
 
   return (
@@ -498,6 +596,11 @@ function CheckTab() {
                     <MessageSquare className="w-4 h-4 text-gray-500" />
                     {reservation.topic}
                   </div>
+                  <div className="text-sm text-gray-700 flex items-center gap-2">
+                    <User className="w-4 h-4 text-gray-500" />
+                    상담 방식: {reservation.consultationType === 'face' ? '대면 상담' : reservation.consultationType === 'phone' ? '전화 상담' : '기타'}
+                    {reservation.consultationType === 'etc' && reservation.consultationTypeEtc && ` (${reservation.consultationTypeEtc})`}
+                  </div>
                 </div>
 
                 <Button
@@ -515,6 +618,18 @@ function CheckTab() {
           </div>
         )}
       </div>
-    </div>
+
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        isDangerous={true}
+        confirmText="예약 취소"
+        cancelText={confirmModal.cancelText}
+      />
+    </div >
   );
 }

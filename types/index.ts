@@ -32,8 +32,10 @@ export interface Reservation {
   period: number;
   startTime: string;
   endTime: string;
-  topic: CounselingTopic;
+  topic: string;
   content: string;
+  consultationType: 'face' | 'phone' | 'etc';
+  consultationTypeEtc?: string;
   createdAt: number;
 }
 

@@ -7,6 +7,7 @@ import Layout from '@/components/Layout';
 import Calendar from '@/components/Calendar';
 import Button from '@/components/Button';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import ConfirmModal from '@/components/ConfirmModal';
 import { Period, AvailableSlot, Reservation, DEFAULT_PERIODS } from '@/types';
 import { formatDate, formatDateKorean, generateId } from '@/lib/utils';
 import { Clock, Trash2, Settings, Calendar as CalendarIcon, Download, X } from 'lucide-react';
@@ -31,6 +32,12 @@ export default function TeacherPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { },
+  });
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -227,35 +234,45 @@ export default function TeacherPage() {
   };
 
   // 슬롯 삭제
-  const handleDeleteSlot = async (slotId: string) => {
-    if (!confirm('이 시간대를 삭제하시겠습니까?')) return;
-
-    try {
-      await deleteDoc(doc(db, 'availableSlots', slotId));
-    } catch (error) {
-      console.error('삭제 오류:', error);
-      alert('삭제에 실패했습니다.');
-    }
+  const handleDeleteSlot = (slotId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: '상담 시간 삭제',
+      message: '이 시간대를 삭제하시겠습니까?',
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, 'availableSlots', slotId));
+        } catch (error) {
+          console.error('삭제 오류:', error);
+          alert('삭제에 실패했습니다.');
+        }
+      },
+    });
   };
 
   // 예약 취소 (교사)
-  const handleCancelReservation = async (reservation: Reservation) => {
-    if (!confirm(`${reservation.studentName}(${reservation.studentNumber})의 예약을 취소하시겠습니까?`)) return;
+  const handleCancelReservation = (reservation: Reservation) => {
+    setConfirmModal({
+      isOpen: true,
+      title: '예약 취소',
+      message: `${reservation.studentName}(${reservation.studentNumber})의 예약을 취소하시겠습니까?`,
+      onConfirm: async () => {
+        try {
+          const reservationRef = doc(db, 'reservations', reservation.id);
+          const slotRef = doc(db, 'availableSlots', reservation.slotId);
 
-    try {
-      const reservationRef = doc(db, 'reservations', reservation.id);
-      const slotRef = doc(db, 'availableSlots', reservation.slotId);
+          await runTransaction(db, async (transaction) => {
+            transaction.delete(reservationRef);
+            transaction.update(slotRef, { status: 'available' });
+          });
 
-      await runTransaction(db, async (transaction) => {
-        transaction.delete(reservationRef);
-        transaction.update(slotRef, { status: 'available' });
-      });
-
-      alert('예약이 취소되었습니다.');
-    } catch (error) {
-      console.error('예약 취소 오류:', error);
-      alert('예약 취소에 실패했습니다.');
-    }
+          alert('예약이 취소되었습니다.');
+        } catch (error) {
+          console.error('예약 취소 오류:', error);
+          alert('예약 취소에 실패했습니다.');
+        }
+      },
+    });
   };
 
   // Excel 내보내기
@@ -268,6 +285,11 @@ export default function TeacherPage() {
     // 데이터 준비
     const data = reservations.map((reservation) => {
       const period = periods.find((p) => p.number === reservation.period);
+      let consultationTypeStr = '';
+      if (reservation.consultationType === 'face') consultationTypeStr = '대면 상담';
+      else if (reservation.consultationType === 'phone') consultationTypeStr = '전화 상담';
+      else if (reservation.consultationType === 'etc') consultationTypeStr = `기타 (${reservation.consultationTypeEtc || ''})`;
+
       return {
         '학번': reservation.studentNumber,
         '이름': reservation.studentName,
@@ -275,6 +297,7 @@ export default function TeacherPage() {
         '교시': period?.label || `${reservation.period}교시`,
         '시간': `${reservation.startTime} - ${reservation.endTime}`,
         '상담 주제': reservation.topic,
+        '상담 방식': consultationTypeStr,
         '상담 내용': reservation.content,
         '예약 일시': new Date(reservation.createdAt).toLocaleString('ko-KR'),
       };
@@ -457,11 +480,10 @@ export default function TeacherPage() {
                   return (
                     <div
                       key={slot.id}
-                      className={`flex items-center justify-between p-3 rounded-lg border ${
-                        slot.status === 'reserved'
-                          ? 'bg-gray-100 border-gray-300'
-                          : 'bg-white border-gray-200'
-                      }`}
+                      className={`flex items-center justify-between p-3 rounded-lg border ${slot.status === 'reserved'
+                        ? 'bg-gray-100 border-gray-300'
+                        : 'bg-white border-gray-200'
+                        }`}
                     >
                       <div className="flex-1">
                         <span className="font-medium">{formatDateKorean(slot.date)}</span>
@@ -539,6 +561,14 @@ export default function TeacherPage() {
                     <div className="text-sm text-gray-700 mb-1">
                       <span className="font-medium">주제:</span> {reservation.topic}
                     </div>
+                    <div className="text-sm text-gray-700 mb-1">
+                      <span className="font-medium">방식:</span>{' '}
+                      {reservation.consultationType === 'face'
+                        ? '대면 상담'
+                        : reservation.consultationType === 'phone'
+                          ? '전화 상담'
+                          : `기타 (${reservation.consultationTypeEtc || ''})`}
+                    </div>
                     <div className="text-sm text-gray-700">
                       <span className="font-medium">내용:</span> {reservation.content}
                     </div>
@@ -557,6 +587,16 @@ export default function TeacherPage() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        isDangerous={true}
+        confirmText="삭제"
+      />
     </Layout>
   );
 }
